@@ -2,7 +2,7 @@
 
 ![Smart Classroom AI](https://github.com/Arsalan0786/smart-classroom/assets/placeholder.png) <!-- Update this with an actual screenshot from your repo -->
 
-A comprehensive, real-time Computer Vision system and full-stack web dashboard designed for modern educational environments. It uses machine learning to actively monitor classroom occupancy, automatically manages energy-consuming appliances (fans & lights) to reduce power waste, and stores historical analytics data for institution-wide auditing.
+A comprehensive, real-time Computer Vision system and full-stack web dashboard designed for modern educational environments. It uses Yolov8 to actively monitor classroom occupancy, automatically manages energy-consuming appliances (fans & lights) to reduce power waste, and stores historical analytics data for institution-wide auditing.
 
 ---
 
