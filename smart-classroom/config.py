@@ -1,0 +1,3 @@
+MODEL_PATH = "models/best.pt"
+CONF_THRESHOLD = 0.4
+CAMERA_INDEX = 0

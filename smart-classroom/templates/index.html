@@ -1,0 +1,1367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Classroom AI — Dashboard</title>
+  <meta name="description" content="Real-time person detection and quadrant analysis for smart classrooms" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+
+  <!-- Libraries (CDN) -->
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <style>
+    /* ════════════════════════════════════════════════════════════
+       DESIGN TOKENS
+    ════════════════════════════════════════════════════════════ */
+    :root {
+      --bg          : #070b18;
+      --bg2         : #0c1022;
+      --surface     : rgba(255,255,255,0.04);
+      --surface2    : rgba(255,255,255,0.07);
+      --border      : rgba(255,255,255,0.07);
+      --border2     : rgba(255,255,255,0.14);
+
+      --text        : #e2e8f0;
+      --text2       : #94a3b8;
+      --muted       : #475569;
+
+      --purple      : #8b5cf6;
+      --purple-glow : rgba(139,92,246,0.35);
+      --blue        : #3b82f6;
+      --cyan        : #06b6d4;
+      --green       : #10b981;
+      --red         : #ef4444;
+      --amber       : #f59e0b;
+      --white       : #f8fafc;
+
+      --r           : 12px;
+      --r-lg        : 16px;
+      --ease        : 0.2s ease;
+    }
+
+    /* ── Reset ─────────────────────────────────────────────── */
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+
+    body {
+      background : var(--bg);
+      color      : var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
+      min-height : 100vh;
+      overflow-x : hidden;
+    }
+
+    /* Grid-dot background */
+    body::before {
+      content : '';
+      position: fixed;
+      inset   : 0;
+      background-image:
+        linear-gradient(rgba(139,92,246,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(139,92,246,.025) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events : none;
+      z-index        : 0;
+    }
+
+    /* Ambient top glow */
+    body::after {
+      content   : '';
+      position  : fixed;
+      top       : -300px;
+      left      : 50%;
+      transform : translateX(-50%);
+      width     : 900px;
+      height    : 500px;
+      background: radial-gradient(ellipse, rgba(139,92,246,.10) 0%, transparent 65%);
+      pointer-events: none;
+      z-index   : 0;
+    }
+
+    /* ── App shell ────────────────────────────────────────── */
+    .app {
+      position  : relative;
+      z-index   : 1;
+      max-width : 1700px;
+      margin    : 0 auto;
+      padding   : 0 24px 48px;
+    }
+
+    /* ════════════════════════════════════════════════════════
+       HEADER
+    ════════════════════════════════════════════════════════ */
+    header {
+      position  : sticky;
+      top       : 0;
+      z-index   : 200;
+      background: rgba(7,11,24,.92);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      margin   : 0 -24px;
+      padding  : 14px 24px;
+      display  : flex;
+      align-items: center;
+      justify-content: space-between;
+      gap      : 16px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+
+    .logo {
+      display    : flex;
+      align-items: center;
+      gap        : 12px;
+    }
+
+    .logo-mark {
+      width           : 40px;
+      height          : 40px;
+      border-radius   : 11px;
+      background      : linear-gradient(135deg, var(--purple) 0%, var(--cyan) 100%);
+      display         : flex;
+      align-items     : center;
+      justify-content : center;
+      font-size       : 1.2rem;
+      box-shadow      : 0 0 20px var(--purple-glow);
+      flex-shrink     : 0;
+    }
+
+    .logo-text .logo-title {
+      font-size  : 1.05rem;
+      font-weight: 700;
+      letter-spacing: -.025em;
+      background : linear-gradient(120deg, #fff 30%, var(--cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .logo-text .logo-sub {
+      font-size : .7rem;
+      color     : var(--muted);
+      font-weight: 400;
+      margin-top: 1px;
+    }
+
+    /* Controls row */
+    .controls {
+      display    : flex;
+      align-items: center;
+      gap        : 10px;
+      flex-wrap  : wrap;
+    }
+
+    select, .text-input {
+      background : var(--surface);
+      border     : 1px solid var(--border2);
+      color      : var(--text);
+      padding    : 8px 12px;
+      border-radius: 9px;
+      font-size  : .84rem;
+      font-family: inherit;
+      outline    : none;
+      transition : border-color var(--ease), box-shadow var(--ease);
+    }
+
+    select:focus, .text-input:focus {
+      border-color: var(--purple);
+      box-shadow  : 0 0 0 3px rgba(139,92,246,.15);
+    }
+
+    select { cursor: pointer; }
+
+    #pathInput {
+      width  : 240px;
+      display: none;
+    }
+
+    /* Buttons */
+    .btn {
+      display        : inline-flex;
+      align-items    : center;
+      gap            : 6px;
+      padding        : 8px 18px;
+      border-radius  : 9px;
+      border         : none;
+      cursor         : pointer;
+      font-size      : .84rem;
+      font-weight    : 600;
+      font-family    : inherit;
+      transition     : all var(--ease);
+      white-space    : nowrap;
+    }
+
+    .btn:disabled { opacity:.35; cursor:not-allowed; }
+
+    .btn-start {
+      background: linear-gradient(135deg, var(--purple) 0%, var(--blue) 100%);
+      color     : #fff;
+      box-shadow: 0 4px 14px rgba(139,92,246,.25);
+    }
+
+    .btn-start:hover:not(:disabled) {
+      transform : translateY(-1px);
+      box-shadow: 0 6px 20px rgba(139,92,246,.4);
+    }
+
+    .btn-stop {
+      background: rgba(239,68,68,.12);
+      color     : var(--red);
+      border    : 1px solid rgba(239,68,68,.25);
+    }
+
+    .btn-stop:hover:not(:disabled) { background: rgba(239,68,68,.22); }
+
+    /* Status pill */
+    .status-pill {
+      display    : inline-flex;
+      align-items: center;
+      gap        : 7px;
+      padding    : 5px 13px;
+      border-radius: 20px;
+      font-size  : .72rem;
+      font-weight: 700;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+    }
+
+    .status-pill.idle    { background: rgba(71,85,105,.25); color:var(--muted); border:1px solid rgba(71,85,105,.3); }
+    .status-pill.live    { background: rgba(16,185,129,.12); color:var(--green); border:1px solid rgba(16,185,129,.3); }
+    .status-pill.stopped { background: rgba(239,68,68,.12);  color:var(--red);   border:1px solid rgba(239,68,68,.3); }
+    .status-pill.image   { background: rgba(6,182,212,.12);  color:var(--cyan);  border:1px solid rgba(6,182,212,.3); }
+
+    .s-dot {
+      width : 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .s-dot.blink { animation: blink 1.2s ease infinite; }
+
+    @keyframes blink {
+      0%,100% { opacity:1; transform:scale(1); }
+      50%     { opacity:.3; transform:scale(.65); }
+    }
+
+    /* ════════════════════════════════════════════════════════
+       STATS ROW
+    ════════════════════════════════════════════════════════ */
+    .stats-row {
+      display              : grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap                  : 18px;
+      margin-bottom        : 22px;
+    }
+
+    @media (max-width:900px)  { .stats-row { grid-template-columns: repeat(2,1fr); } }
+    @media (max-width:480px)  { .stats-row { grid-template-columns: 1fr 1fr; } }
+
+    .stat-card {
+      background   : var(--surface);
+      border       : 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding      : 22px 20px 18px;
+      position     : relative;
+      overflow     : hidden;
+      transition   : border-color var(--ease);
+    }
+
+    .stat-card::after {
+      content  : '';
+      position : absolute;
+      top      : 0; left: 0; right: 0;
+      height   : 2px;
+      background: var(--stripe, linear-gradient(90deg, var(--purple), var(--blue)));
+    }
+
+    .stat-card.c-fps    { --stripe: linear-gradient(90deg, var(--cyan),   var(--blue)); }
+    .stat-card.c-persons{ --stripe: linear-gradient(90deg, var(--purple), var(--blue)); }
+    .stat-card.c-frames { --stripe: linear-gradient(90deg, var(--blue),   var(--cyan)); }
+    .stat-card.c-status { --stripe: linear-gradient(90deg, var(--green),  var(--cyan)); }
+
+    .st-icon  { font-size:1.3rem; margin-bottom:10px; }
+    .st-val   {
+      font-size   : 2.4rem;
+      font-weight : 900;
+      line-height : 1;
+      letter-spacing: -.04em;
+      color       : var(--white);
+      font-variant-numeric: tabular-nums;
+      margin-bottom: 5px;
+    }
+
+    .st-val.sm { font-size: 1.3rem; line-height: 1.5; }
+    .st-label  {
+      font-size     : .7rem;
+      font-weight   : 600;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color         : var(--text2);
+    }
+
+    /* ════════════════════════════════════════════════════════
+       CARD BASE
+    ════════════════════════════════════════════════════════ */
+    .card {
+      background   : var(--surface);
+      border       : 1px solid var(--border);
+      border-radius: var(--r-lg);
+      overflow     : hidden;
+    }
+
+    .card-hd {
+      display      : flex;
+      align-items  : center;
+      justify-content: space-between;
+      padding      : 13px 20px;
+      border-bottom: 1px solid var(--border);
+      font-size    : .75rem;
+      font-weight  : 700;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color        : var(--text2);
+    }
+
+    .card-hd .badge {
+      background   : var(--surface2);
+      color        : var(--text);
+      padding      : 2px 10px;
+      border-radius: 20px;
+      font-size    : .75rem;
+      font-weight  : 600;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    /* ════════════════════════════════════════════════════════
+       MAIN GRID  (video + right panel)
+    ════════════════════════════════════════════════════════ */
+    .main-grid {
+      display              : grid;
+      grid-template-columns: 1fr 360px;
+      gap                  : 20px;
+      margin-bottom        : 20px;
+    }
+
+    @media (max-width:1100px) { .main-grid { grid-template-columns: 1fr; } }
+
+    /* Video card */
+    .video-card {
+      display       : flex;
+      flex-direction: column;
+      min-height    : 400px;
+    }
+
+    .video-wrap {
+      position  : relative;
+      flex      : 1;
+      background: #000;
+      min-height: 360px;
+    }
+
+    #videoFeed {
+      width      : 100%;
+      height     : 100%;
+      object-fit : contain;
+      display    : block;
+      min-height : 360px;
+    }
+
+    .no-feed-overlay {
+      position       : absolute;
+      inset          : 0;
+      display        : flex;
+      flex-direction : column;
+      align-items    : center;
+      justify-content: center;
+      gap            : 12px;
+      color          : var(--muted);
+    }
+
+    .no-feed-overlay .nf-icon { font-size:3.5rem; opacity:.4; }
+    .no-feed-overlay h3 { font-size:.95rem; font-weight:600; color:var(--text2); }
+    .no-feed-overlay p  { font-size:.78rem; }
+
+    /* Live badge */
+    .live-badge {
+      display    : flex;
+      align-items: center;
+      gap        : 6px;
+      font-size  : .72rem;
+      font-weight: 700;
+      color      : var(--green);
+    }
+
+    .live-dot {
+      width        : 8px;
+      height       : 8px;
+      border-radius: 50%;
+      background   : var(--green);
+      animation    : blink 1s ease infinite;
+    }
+
+    /* ── Right panel ── */
+    .right-panel { display:flex; flex-direction:column; gap:20px; }
+
+    /* Quadrant 2 × 2 */
+    .q-grid {
+      display              : grid;
+      grid-template-columns: 1fr 1fr;
+      gap                  : 1px;
+      background           : var(--border);
+    }
+
+    .q-cell {
+      background: var(--bg2);
+      padding   : 22px 16px 18px;
+      text-align: center;
+      position  : relative;
+      transition: background var(--ease);
+    }
+
+    .q-cell.flash { animation: q-flash .35s ease forwards; }
+
+    @keyframes q-flash {
+      0%   { background: rgba(255,255,255,.10); }
+      100% { background: var(--bg2); }
+    }
+
+    .q-cell:nth-child(1) { border-radius:var(--r) 0 0 0; }
+    .q-cell:nth-child(2) { border-radius:0 var(--r) 0 0; }
+    .q-cell:nth-child(3) { border-radius:0 0 0 var(--r); }
+    .q-cell:nth-child(4) { border-radius:0 0 var(--r) 0; }
+
+    .q-chip {
+      display      : inline-block;
+      padding      : 2px 9px;
+      border-radius: 6px;
+      font-size    : .68rem;
+      font-weight  : 700;
+      letter-spacing: .05em;
+      margin-bottom: 8px;
+    }
+
+    .q1 .q-chip { background:rgba(139,92,246,.2); color:var(--purple); }
+    .q2 .q-chip { background:rgba(59,130,246,.2);  color:var(--blue); }
+    .q3 .q-chip { background:rgba(6,182,212,.2);   color:var(--cyan); }
+    .q4 .q-chip { background:rgba(16,185,129,.2);  color:var(--green); }
+
+    .q-num {
+      font-size     : 3.2rem;
+      font-weight   : 900;
+      line-height   : 1;
+      letter-spacing: -.05em;
+      font-variant-numeric: tabular-nums;
+      transition    : transform .15s ease;
+    }
+
+    .q-num.bump { animation: bump .2s ease; }
+    @keyframes bump { 50% { transform:scale(1.18); } }
+
+    .q1 .q-num { color:var(--purple); }
+    .q2 .q-num { color:var(--blue); }
+    .q3 .q-num { color:var(--cyan); }
+    .q4 .q-num { color:var(--green); }
+
+    .q-pos { font-size:.68rem; color:var(--muted); margin-top:3px; }
+
+    /* ── Donut chart ── */
+    .donut-wrap {
+      padding        : 18px;
+      display        : flex;
+      justify-content: center;
+      align-items    : center;
+    }
+
+    .donut-wrap canvas { max-height:200px; max-width:200px; }
+
+    /* ════════════════════════════════════════════════════════
+       IMAGE SECTION
+    ════════════════════════════════════════════════════════ */
+    #imageSection { display:none; margin-bottom:20px; }
+    #imageSection.active { display:block; }
+
+    .upload-zone {
+      border        : 2px dashed var(--border2);
+      border-radius : var(--r);
+      padding       : 48px 20px;
+      margin        : 20px;
+      text-align    : center;
+      cursor        : pointer;
+      transition    : all var(--ease);
+      display       : flex;
+      flex-direction: column;
+      align-items   : center;
+      gap           : 12px;
+    }
+
+    .upload-zone:hover, .upload-zone.over {
+      border-color: var(--purple);
+      background  : rgba(139,92,246,.06);
+    }
+
+    .upload-zone input { display:none; }
+    .upload-icon { font-size:2.8rem; opacity:.55; }
+
+    .upload-zone h3 { font-size:1rem; font-weight:600; }
+    .upload-zone p  { font-size:.78rem; color:var(--muted); }
+
+    .result-img-wrap { padding:0 20px 20px; }
+
+    #resultImage {
+      width        : 100%;
+      border-radius: var(--r);
+      display      : none;
+    }
+
+    /* Detection items */
+    .det-item {
+      display    : flex;
+      align-items: center;
+      gap        : 10px;
+      padding    : 10px 16px;
+      background : var(--bg2);
+      border-radius: var(--r);
+      margin     : 0 16px 8px;
+      border     : 1px solid var(--border);
+      font-size  : .84rem;
+    }
+
+    .det-id {
+      width          : 24px;
+      height         : 24px;
+      border-radius  : 7px;
+      background     : var(--purple);
+      display        : flex;
+      align-items    : center;
+      justify-content: center;
+      font-size      : .68rem;
+      font-weight    : 700;
+      flex-shrink    : 0;
+    }
+
+    .det-label { flex:1; font-weight:600; text-transform:capitalize; }
+    .det-conf  {
+      font-size    : .75rem;
+      padding      : 2px 9px;
+      border-radius: 20px;
+      background   : rgba(255,255,255,.06);
+      color        : var(--text2);
+      font-family  : 'JetBrains Mono', monospace;
+    }
+
+    .det-quad {
+      font-size    : .72rem;
+      font-weight  : 700;
+      padding      : 2px 9px;
+      border-radius: 20px;
+    }
+
+    .det-quad.Q1 { background:rgba(139,92,246,.2); color:var(--purple); }
+    .det-quad.Q2 { background:rgba(59,130,246,.2);  color:var(--blue); }
+    .det-quad.Q3 { background:rgba(6,182,212,.2);   color:var(--cyan); }
+    .det-quad.Q4 { background:rgba(16,185,129,.2);  color:var(--green); }
+
+    .det-empty {
+      text-align : center;
+      color      : var(--muted);
+      padding    : 20px 0;
+      font-size  : .84rem;
+    }
+
+    /* ════════════════════════════════════════════════════════
+       CHARTS
+    ════════════════════════════════════════════════════════ */
+    .chart-section { margin-bottom:20px; }
+
+    .chart-body { padding:20px; }
+    .chart-body canvas { max-height:260px; }
+
+    /* ════════════════════════════════════════════════════════
+       LOG TABLE
+    ════════════════════════════════════════════════════════ */
+    .table-scroll {
+      overflow-x : auto;
+      max-height : 300px;
+      overflow-y : auto;
+    }
+
+    table {
+      width          : 100%;
+      border-collapse: collapse;
+      font-size      : .82rem;
+      font-family    : 'JetBrains Mono', monospace;
+    }
+
+    thead th {
+      position       : sticky;
+      top            : 0;
+      background     : var(--bg2);
+      color          : var(--text2);
+      font-size      : .7rem;
+      font-weight    : 700;
+      text-transform : uppercase;
+      letter-spacing : .07em;
+      padding        : 10px 16px;
+      text-align     : right;
+      border-bottom  : 1px solid var(--border);
+      z-index        : 2;
+    }
+
+    thead th:first-child { text-align:left; }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition   : background var(--ease);
+    }
+
+    tbody tr:hover { background:var(--surface2); }
+
+    tbody tr.row-in { animation: row-in .3s ease; }
+    @keyframes row-in {
+      from { background:rgba(139,92,246,.18); }
+      to   { background:transparent; }
+    }
+
+    tbody td {
+      padding    : 9px 16px;
+      text-align : right;
+      color      : var(--text);
+    }
+
+    tbody td:first-child { text-align:left; color:var(--muted); }
+
+    .tc-q1 { color:var(--purple); font-weight:700; }
+    .tc-q2 { color:var(--blue);   font-weight:700; }
+    .tc-q3 { color:var(--cyan);   font-weight:700; }
+    .tc-q4 { color:var(--green);  font-weight:700; }
+    .tc-tot { color:var(--white); font-weight:800; }
+
+    /* ════════════════════════════════════════════════════════
+       TOASTS
+    ════════════════════════════════════════════════════════ */
+    #toasts {
+      position     : fixed;
+      bottom       : 24px;
+      right        : 24px;
+      z-index      : 9999;
+      display      : flex;
+      flex-direction: column;
+      gap          : 8px;
+      pointer-events:none;
+    }
+
+    .toast {
+      background   : var(--bg2);
+      border       : 1px solid var(--border2);
+      border-radius: var(--r);
+      padding      : 12px 16px;
+      font-size    : .84rem;
+      display      : flex;
+      align-items  : center;
+      gap          : 10px;
+      animation    : toast-in .3s ease;
+      max-width    : 300px;
+      pointer-events: all;
+    }
+
+    .toast.success { border-left:3px solid var(--green); }
+    .toast.error   { border-left:3px solid var(--red); }
+    .toast.info    { border-left:3px solid var(--blue); }
+
+    @keyframes toast-in {
+      from { transform:translateX(110%); opacity:0; }
+      to   { transform:translateX(0);    opacity:1; }
+    }
+
+    /* ════════════════════════════════════════════════════════
+       UTILS
+    ════════════════════════════════════════════════════════ */
+    .hidden { display:none !important; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar       { width:5px; height:5px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:var(--muted); border-radius:3px; }
+    ::-webkit-scrollbar-thumb:hover { background:var(--text2); }
+
+    /* Responsive layout tweaks */
+    @media (max-width:640px) {
+      .controls { width:100%; }
+      header    { flex-direction:column; align-items:flex-start; }
+      .st-val   { font-size:1.8rem; }
+      .q-num    { font-size:2.2rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ─────────────────────── HEADER ─────────────────────── -->
+  <header>
+    <div class="logo">
+      <div class="logo-mark">🎓</div>
+      <div class="logo-text">
+        <div class="logo-title">Smart Classroom AI</div>
+        <div class="logo-sub">Real-Time Person Detection &amp; Quadrant Analysis</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <select id="sourceSelect">
+        <option value="webcam">📷 Webcam</option>
+        <option value="video">🎬 Video File</option>
+        <option value="image">🖼️ Image</option>
+      </select>
+      <input id="pathInput" class="text-input" type="text" placeholder="Video file path…" />
+      <button class="btn btn-start" id="startBtn">▶ Start</button>
+      <button class="btn btn-stop"  id="stopBtn" disabled>⏹ Stop</button>
+      <div class="status-pill idle" id="statusPill">
+        <div class="s-dot" id="statusDot"></div>
+        <span id="statusTxt">IDLE</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ─────────────────────── STATS ROW ──────────────────── -->
+  <div class="stats-row">
+    <div class="stat-card c-fps">
+      <div class="st-icon">⚡</div>
+      <div class="st-val" id="stFps">0.0</div>
+      <div class="st-label">Frames / Second</div>
+    </div>
+    <div class="stat-card c-persons">
+      <div class="st-icon">👥</div>
+      <div class="st-val" id="stPersons">0</div>
+      <div class="st-label">Persons Detected</div>
+    </div>
+    <div class="stat-card c-frames">
+      <div class="st-icon">🎞️</div>
+      <div class="st-val" id="stFrames">0</div>
+      <div class="st-label">Frames Processed</div>
+    </div>
+    <div class="stat-card c-status">
+      <div class="st-icon">📡</div>
+      <div class="st-val sm" id="stSource">IDLE</div>
+      <div class="st-label">Source Status</div>
+    </div>
+  </div>
+
+  <!-- ─────────────── LIVE SECTION (webcam / video) ───────── -->
+  <div id="liveSection">
+    <div class="main-grid">
+
+      <!-- Video stream -->
+      <div class="card video-card">
+        <div class="card-hd">
+          <span>Live Feed</span>
+          <div class="live-badge hidden" id="liveBadge">
+            <div class="live-dot"></div>LIVE
+          </div>
+        </div>
+        <div class="video-wrap">
+          <img id="videoFeed" src="" alt="Video stream" />
+          <div class="no-feed-overlay" id="noFeed">
+            <div class="nf-icon">🎥</div>
+            <h3>No Active Feed</h3>
+            <p>Select a source and press Start</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right panel -->
+      <div class="right-panel">
+
+        <!-- Quadrant grid -->
+        <div class="card">
+          <div class="card-hd">
+            <span>Quadrant Person Count</span>
+            <span class="badge" id="totalBadge">Total: 0</span>
+          </div>
+          <div class="q-grid">
+            <div class="q-cell q1" id="qc1">
+              <div class="q-chip">Q1</div>
+              <div class="q-num" id="qn1">0</div>
+              <div class="q-pos">Top Left</div>
+            </div>
+            <div class="q-cell q2" id="qc2">
+              <div class="q-chip">Q2</div>
+              <div class="q-num" id="qn2">0</div>
+              <div class="q-pos">Top Right</div>
+            </div>
+            <div class="q-cell q3" id="qc3">
+              <div class="q-chip">Q3</div>
+              <div class="q-num" id="qn3">0</div>
+              <div class="q-pos">Bottom Left</div>
+            </div>
+            <div class="q-cell q4" id="qc4">
+              <div class="q-chip">Q4</div>
+              <div class="q-num" id="qn4">0</div>
+              <div class="q-pos">Bottom Right</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Distribution donut -->
+        <div class="card">
+          <div class="card-hd">Distribution</div>
+          <div class="donut-wrap">
+            <canvas id="donutChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Automated Appliances -->
+        <div class="card" id="appliancesCard">
+          <div class="card-hd">
+            <span>Automated Appliances</span>
+            <span class="badge" style="background: rgba(16,185,129,.12); border: 1px solid rgba(16,185,129,.3); color: var(--green);">SYSTEM ACTIVE</span>
+          </div>
+          <div style="padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div style="background: var(--bg2); padding: 18px 10px; border-radius: var(--r); border: 1px solid var(--border); text-align: center; transition: all 0.3s;" id="fanBox">
+              <div style="font-size: 2rem; margin-bottom: 5px;">♨️</div>
+              <div style="font-size: 2.2rem; font-weight: 900; line-height: 1; color: var(--cyan); transition: transform 0.2s;" id="fanCount">0</div>
+              <div style="font-size: 0.72rem; color: var(--muted); text-transform: uppercase; font-weight: 700; margin-top: 5px; letter-spacing: 0.05em;">Fans Running</div>
+            </div>
+            <div style="background: var(--bg2); padding: 18px 10px; border-radius: var(--r); border: 1px solid var(--border); text-align: center; transition: all 0.3s;" id="lightBox">
+              <div style="font-size: 2rem; margin-bottom: 5px;">💡</div>
+              <div style="font-size: 2.2rem; font-weight: 900; line-height: 1; color: var(--amber); transition: transform 0.2s;" id="lightCount">0</div>
+              <div style="font-size: 0.72rem; color: var(--muted); text-transform: uppercase; font-weight: 700; margin-top: 5px; letter-spacing: 0.05em;">Lights Active</div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /right-panel -->
+    </div><!-- /main-grid -->
+
+    <!-- History line chart -->
+    <div class="card chart-section">
+      <div class="card-hd">
+        <span>Person Count History</span>
+        <span class="badge" id="histLabel">Last 60 frames</span>
+      </div>
+      <div class="chart-body">
+        <canvas id="histChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Detection log table -->
+    <div class="card">
+      <div class="card-hd">
+        <span>Detection Log</span>
+        <span class="badge" id="logCount">0 entries</span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Frame</th>
+              <th>Q1 (TL)</th>
+              <th>Q2 (TR)</th>
+              <th>Q3 (BL)</th>
+              <th>Q4 (BR)</th>
+              <th>Total</th>
+              <th>FPS</th>
+            </tr>
+          </thead>
+          <tbody id="logBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /liveSection -->
+
+  <!-- ─────────────── IMAGE SECTION ───────────────────────── -->
+  <div id="imageSection">
+    <div class="main-grid" style="margin-bottom:20px">
+
+      <!-- Upload / result -->
+      <div class="card">
+        <div class="card-hd">Image Analysis</div>
+        <div class="upload-zone" id="uploadZone">
+          <input type="file" id="imgInput" accept="image/*" />
+          <div class="upload-icon">📸</div>
+          <h3>Drop an image here</h3>
+          <p>or click to browse — JPG, PNG, WebP supported</p>
+        </div>
+        <div class="result-img-wrap">
+          <img id="resultImage" alt="Detection result" />
+        </div>
+      </div>
+
+      <!-- Image quadrant panel -->
+      <div class="right-panel">
+        <div class="card">
+          <div class="card-hd">
+            <span>Quadrant Results</span>
+            <span class="badge" id="imgTotalBadge">—</span>
+          </div>
+          <div class="q-grid">
+            <div class="q-cell q1"><div class="q-chip">Q1</div><div class="q-num" id="iq1">—</div><div class="q-pos">Top Left</div></div>
+            <div class="q-cell q2"><div class="q-chip">Q2</div><div class="q-num" id="iq2">—</div><div class="q-pos">Top Right</div></div>
+            <div class="q-cell q3"><div class="q-chip">Q3</div><div class="q-num" id="iq3">—</div><div class="q-pos">Bottom Left</div></div>
+            <div class="q-cell q4"><div class="q-chip">Q4</div><div class="q-num" id="iq4">—</div><div class="q-pos">Bottom Right</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-hd">
+            <span>Detected Persons</span>
+            <span class="badge" id="imgDetBadge">0</span>
+          </div>
+          <div id="detList" style="padding:12px 0">
+            <p class="det-empty">Upload an image to see detections</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div><!-- /imageSection -->
+
+  <!-- ─────────────── DATABASE ANALYTICS ──────────────────── -->
+  <div class="card chart-section" style="margin-top:20px;">
+    <div class="card-hd">
+      <span>Historical Database Data (Past 24 Hours)</span>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <span class="badge" id="dbTotalFrames">0 frames logged</span>
+        <button class="btn btn-start" style="padding: 4px 10px; font-size: 0.70rem;" onclick="window.location.href='/api/db/export_csv'">⬇ CSV</button>
+        <button class="btn btn-start" style="padding: 4px 10px; font-size: 0.70rem; background: linear-gradient(135deg, var(--cyan) 0%, var(--blue) 100%);" onclick="downloadDbChart()">⬇ Graph</button>
+      </div>
+    </div>
+    <div class="stats-row" style="padding: 20px 20px 0; margin-bottom: 0;">
+      <div class="stat-card" style="padding: 15px;">
+        <div class="st-label" style="margin-bottom:8px;">All-Time Peak</div>
+        <div class="st-val sm" id="dbPeak">0</div>
+      </div>
+      <div class="stat-card" style="padding: 15px;">
+        <div class="st-label" style="margin-bottom:8px;">Overall Average</div>
+        <div class="st-val sm" id="dbAvg">0.0</div>
+      </div>
+      <div class="stat-card" style="padding: 15px;">
+        <div class="st-label" style="margin-bottom:8px;">Total Sessions</div>
+        <div class="st-val sm" id="dbSessions">0</div>
+      </div>
+    </div>
+    <div class="chart-body" style="height: 280px; display: flex; align-items: center; justify-content: center;">
+      <canvas id="dbChart" style="max-height:100%; width:100%;"></canvas>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<!-- Toast container -->
+<div id="toasts"></div>
+
+<!-- ─────────────────────── SCRIPTS ─────────────────────── -->
+<script>
+/* ───────────────────────────────────────────────────────────
+   Helpers
+─────────────────────────────────────────────────────────── */
+const $  = id => document.getElementById(id);
+const MAX_HIST  = 60;
+const MAX_ROWS  = 60;
+const CHART_THR = 3;   // update charts every N socket events
+
+let updateCtr  = 0;
+let logRowCtr  = 0;
+let prevQ      = { Q1: null, Q2: null, Q3: null, Q4: null };
+
+/* ───────────────────────────────────────────────────────────
+   Chart.js – shared defaults
+─────────────────────────────────────────────────────────── */
+Chart.defaults.color       = '#94a3b8';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+
+/* History line chart */
+const histLabels = [];
+const hD = { Q1:[], Q2:[], Q3:[], Q4:[], total:[] };
+
+const histChart = new Chart($('histChart').getContext('2d'), {
+  type: 'line',
+  data: {
+    labels  : histLabels,
+    datasets: [
+      { label:'Q1 – Top Left',   data:hD.Q1,    borderColor:'#8b5cf6', backgroundColor:'rgba(139,92,246,.12)', fill:true, tension:.4, borderWidth:2, pointRadius:0 },
+      { label:'Q2 – Top Right',  data:hD.Q2,    borderColor:'#3b82f6', backgroundColor:'rgba(59,130,246,.08)', fill:true, tension:.4, borderWidth:2, pointRadius:0 },
+      { label:'Q3 – Bot Left',   data:hD.Q3,    borderColor:'#06b6d4', backgroundColor:'rgba(6,182,212,.08)',  fill:true, tension:.4, borderWidth:2, pointRadius:0 },
+      { label:'Q4 – Bot Right',  data:hD.Q4,    borderColor:'#10b981', backgroundColor:'rgba(16,185,129,.08)',fill:true, tension:.4, borderWidth:2, pointRadius:0 },
+      { label:'Total',           data:hD.total, borderColor:'#f8fafc', fill:false, tension:.4, borderWidth:1.5, pointRadius:0, borderDash:[6,3] },
+    ]
+  },
+  options: {
+    responsive:true, maintainAspectRatio:true,
+    animation: { duration:0 },
+    interaction: { mode:'index', intersect:false },
+    plugins: {
+      legend: { position:'bottom', labels:{ padding:18, usePointStyle:true, pointStyleWidth:14, font:{ size:11, family:'Inter' } } },
+      tooltip: { backgroundColor:'#0c1022', borderColor:'rgba(255,255,255,.10)', borderWidth:1, padding:10,
+                 titleFont:{ family:'Inter', size:12 }, bodyFont:{ family:'JetBrains Mono', size:11 } }
+    },
+    scales: {
+      x: { ticks:{ maxTicksLimit:10, font:{ size:10 } }, grid:{ color:'rgba(255,255,255,.04)' } },
+      y: { beginAtZero:true, ticks:{ stepSize:1, font:{ size:10, family:'JetBrains Mono' } }, grid:{ color:'rgba(255,255,255,.04)' } }
+    }
+  }
+});
+
+/* Distribution donut */
+const donutChart = new Chart($('donutChart').getContext('2d'), {
+  type: 'doughnut',
+  data: {
+    labels  : ['Q1 Top-Left','Q2 Top-Right','Q3 Bot-Left','Q4 Bot-Right'],
+    datasets: [{
+      data           : [0,0,0,0],
+      backgroundColor: ['rgba(139,92,246,.7)','rgba(59,130,246,.7)','rgba(6,182,212,.7)','rgba(16,185,129,.7)'],
+      borderColor    : ['#8b5cf6','#3b82f6','#06b6d4','#10b981'],
+      borderWidth    : 1.5,
+      hoverOffset    : 7,
+    }]
+  },
+  options: {
+    responsive:true, cutout:'68%',
+    plugins: {
+      legend: { display:false },
+      tooltip: { backgroundColor:'#0c1022', borderColor:'rgba(255,255,255,.10)', borderWidth:1,
+                 callbacks:{ label: c => ` ${c.label}: ${c.raw} person(s)` } }
+    }
+  }
+});
+
+/* ───────────────────────────────────────────────────────────
+   Socket.IO
+─────────────────────────────────────────────────────────── */
+const socket = io();
+
+socket.on('connect',    () => toast('Connected to server', 'success'));
+socket.on('disconnect', () => toast('Disconnected from server', 'error'));
+
+socket.on('update', data => {
+  const { frame, fps, Q1, Q2, Q3, Q4, total, appliances } = data;
+  updateCtr++;
+
+  /* stat cards */
+  $('stFps').textContent     = fps;
+  $('stPersons').textContent = total;
+  $('stFrames').textContent  = frame;
+  $('stSource').textContent  = 'LIVE';
+
+  if (appliances) {
+    setAppliance('fanCount', 'fanBox', appliances.fans);
+    setAppliance('lightCount', 'lightBox', appliances.lights);
+  }
+
+  /* quadrant cells */
+  setQ('qn1','qc1','Q1', Q1);
+  setQ('qn2','qc2','Q2', Q2);
+  setQ('qn3','qc3','Q3', Q3);
+  setQ('qn4','qc4','Q4', Q4);
+  $('totalBadge').textContent = `Total: ${total}`;
+
+  /* charts (throttled) */
+  if (updateCtr % CHART_THR === 0) {
+    histLabels.push(frame);
+    hD.Q1.push(Q1); hD.Q2.push(Q2); hD.Q3.push(Q3); hD.Q4.push(Q4); hD.total.push(total);
+    if (histLabels.length > MAX_HIST) {
+      histLabels.shift();
+      [hD.Q1, hD.Q2, hD.Q3, hD.Q4, hD.total].forEach(a => a.shift());
+    }
+    histChart.update('none');
+    donutChart.data.datasets[0].data = [Q1, Q2, Q3, Q4];
+    donutChart.update('none');
+  }
+
+  /* log row */
+  addLogRow({ frame, fps, Q1, Q2, Q3, Q4, total });
+});
+
+socket.on('srv_stopped', () => {
+  setStatus('stopped');
+  $('startBtn').disabled = false;
+  $('stopBtn').disabled  = true;
+  $('liveBadge').classList.add('hidden');
+  $('videoFeed').src = '';
+  $('noFeed').style.display = '';
+  toast('Detection stopped', 'info');
+});
+
+socket.on('srv_error', d => {
+  toast(d.message || 'An error occurred', 'error');
+  setStatus('idle');
+  $('startBtn').disabled = false;
+  $('stopBtn').disabled  = true;
+});
+
+/* ───────────────────────────────────────────────────────────
+   Controls
+─────────────────────────────────────────────────────────── */
+$('sourceSelect').addEventListener('change', function () {
+  const v = this.value;
+  $('pathInput').style.display = v === 'video' ? 'block' : 'none';
+
+  if (v === 'image') {
+    $('liveSection').classList.add('hidden');
+    $('imageSection').classList.add('active');
+  } else {
+    $('liveSection').classList.remove('hidden');
+    $('imageSection').classList.remove('active');
+  }
+});
+
+$('startBtn').addEventListener('click', async () => {
+  const src  = $('sourceSelect').value;
+  if (src === 'image') return;
+
+  const body = { source: src };
+  if (src === 'video') {
+    const p = $('pathInput').value.trim();
+    if (!p) { toast('Enter a video file path', 'error'); return; }
+    body.path = p;
+  }
+
+  try {
+    const r = await fetch('/api/start', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+    const d = await r.json();
+    if (!r.ok) { toast(d.error || 'Failed to start', 'error'); return; }
+
+    setStatus('live');
+    $('startBtn').disabled = true;
+    $('stopBtn').disabled  = false;
+    $('liveBadge').classList.remove('hidden');
+    $('noFeed').style.display = 'none';
+    $('videoFeed').src = '/video_feed?' + Date.now(); // cache-bust
+
+    /* reset */
+    histLabels.length = 0;
+    [hD.Q1, hD.Q2, hD.Q3, hD.Q4, hD.total].forEach(a => a.length = 0);
+    histChart.update();
+    $('logBody').innerHTML = '';
+    logRowCtr = 0;
+    updateCtr = 0;
+    $('logCount').textContent = '0 entries';
+
+    toast(`Detection started (${src})`, 'success');
+  } catch { toast('Server error', 'error'); }
+});
+
+$('stopBtn').addEventListener('click', () => fetch('/api/stop', { method:'POST' }));
+
+/* ───────────────────────────────────────────────────────────
+   Image Upload
+─────────────────────────────────────────────────────────── */
+const zone = $('uploadZone');
+zone.addEventListener('click', () => $('imgInput').click());
+
+zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('over'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('over'));
+zone.addEventListener('drop', e => {
+  e.preventDefault();
+  zone.classList.remove('over');
+  if (e.dataTransfer.files[0]) processImageFile(e.dataTransfer.files[0]);
+});
+
+$('imgInput').addEventListener('change', function () {
+  if (this.files[0]) processImageFile(this.files[0]);
+});
+
+async function processImageFile(file) {
+  if (!file.type.startsWith('image/')) { toast('Not a valid image file', 'error'); return; }
+
+  toast('Analysing image…', 'info');
+  const fd = new FormData();
+  fd.append('file', file);
+
+  try {
+    const r = await fetch('/api/detect_image', { method:'POST', body:fd });
+    const d = await r.json();
+    if (!r.ok) { toast(d.error || 'Detection failed', 'error'); return; }
+
+    /* result image */
+    const ri = $('resultImage');
+    ri.src = d.image;
+    ri.style.display = 'block';
+
+    /* quadrant nums */
+    ['Q1','Q2','Q3','Q4'].forEach((q, i) => $(`iq${i+1}`).textContent = d.quadrants[q]);
+    $('imgTotalBadge').textContent = `${d.total} person(s)`;
+    $('imgDetBadge').textContent   = d.detection_count;
+
+    /* stat cards */
+    $('stPersons').textContent = d.total;
+    $('stFrames').textContent  = 1;
+    $('stSource').textContent  = 'IMAGE';
+    setStatus('image');
+
+    /* detection list */
+    const list = $('detList');
+    if (d.detections.length === 0) {
+      list.innerHTML = '<p class="det-empty">No persons detected in this image</p>';
+    } else {
+      list.innerHTML = d.detections.map(det => `
+        <div class="det-item">
+          <div class="det-id">${det.id}</div>
+          <div class="det-label">${det.label}</div>
+          <span class="det-conf">${det.confidence}%</span>
+          <span class="det-quad ${det.quadrant}">${det.quadrant}</span>
+        </div>`).join('');
+    }
+
+    toast(`Found ${d.total} person(s)`, 'success');
+    if (d.appliances) {
+        setTimeout(() => toast(`Energy Logic: Sets ${d.appliances.fans} Fans & ${d.appliances.lights} Lights active.`, 'info'), 800);
+    }
+  } catch { toast('Upload failed', 'error'); }
+}
+
+/* ───────────────────────────────────────────────────────────
+   Log table
+─────────────────────────────────────────────────────────── */
+function addLogRow({ frame, fps, Q1, Q2, Q3, Q4, total }) {
+  logRowCtr++;
+  const tbody = $('logBody');
+  const tr    = document.createElement('tr');
+  tr.className = 'row-in';
+  tr.innerHTML = `
+    <td>#${frame}</td>
+    <td class="tc-q1">${Q1}</td>
+    <td class="tc-q2">${Q2}</td>
+    <td class="tc-q3">${Q3}</td>
+    <td class="tc-q4">${Q4}</td>
+    <td class="tc-tot">${total}</td>
+    <td>${fps}</td>`;
+  tbody.insertBefore(tr, tbody.firstChild);
+  while (tbody.children.length > MAX_ROWS) tbody.removeChild(tbody.lastChild);
+  $('logCount').textContent = `${Math.min(logRowCtr, MAX_ROWS)} entries`;
+}
+
+/* ───────────────────────────────────────────────────────────
+   UI helpers
+─────────────────────────────────────────────────────────── */
+function setQ(numId, cellId, key, val) {
+  if (prevQ[key] !== val) {
+    prevQ[key] = val;
+    const n = $(numId);
+    n.textContent = val;
+    n.classList.remove('bump');
+    void n.offsetWidth;
+    n.classList.add('bump');
+    const c = $(cellId);
+    c.classList.remove('flash');
+    void c.offsetWidth;
+    c.classList.add('flash');
+  }
+}
+
+let prevAppliances = { fanCount: null, lightCount: null };
+function setAppliance(numId, boxId, val) {
+  if (prevAppliances[numId] !== val) {
+    prevAppliances[numId] = val;
+    const n = $(numId);
+    if(n) {
+      n.textContent = val;
+      n.style.transform = 'scale(1.25)';
+      setTimeout(() => n.style.transform = 'scale(1)', 200);
+      const b = $(boxId);
+      b.style.borderColor = (numId === 'fanCount') ? 'var(--cyan)' : 'var(--amber)';
+      setTimeout(() => b.style.borderColor = 'var(--border)', 300);
+    }
+  }
+}
+
+function setStatus(s) {
+  const pill = $('statusPill'), dot = $('statusDot'), txt = $('statusTxt');
+  pill.className = `status-pill ${s}`;
+  dot.className  = 's-dot' + (s === 'live' ? ' blink' : '');
+  txt.textContent = s.toUpperCase();
+}
+
+function toast(msg, type = 'info') {
+  const el  = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span>${type==='success'?'✅':type==='error'?'❌':'ℹ️'}</span><span>${msg}</span>`;
+  $('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+/* ───────────────────────────────────────────────────────────
+   Database Analytics
+─────────────────────────────────────────────────────────── */
+const dbChart = new Chart($('dbChart').getContext('2d'), {
+  type: 'bar',
+  data: {
+    labels: [],
+    datasets: [
+      { label: 'Peak Persons', data: [], backgroundColor: 'rgba(139,92,246,.8)', borderRadius: 4 },
+      { label: 'Average Persons', data: [], type: 'line', borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,.15)', fill: true, tension: 0.4, borderWidth: 2 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { position: 'bottom', labels: { usePointStyle: true, font: { family: 'Inter', size:11 } } },
+      tooltip: { backgroundColor:'#0c1022', borderColor:'rgba(255,255,255,.10)', borderWidth:1 }
+    },
+    scales: {
+      y: { beginAtZero:true, grid: { color:'rgba(255,255,255,.04)' }, ticks:{ font:{ family:'JetBrains Mono' } } },
+      x: { grid: { display:false } }
+    }
+  }
+});
+
+async function fetchDbAnalytics() {
+  try {
+    const res = await fetch('/api/db/analytics');
+    const data = await res.json();
+    
+    if (data.analytics) {
+      $('dbPeak').textContent = data.analytics.all_time_peak || 0;
+      $('dbAvg').textContent = data.analytics.overall_avg ? data.analytics.overall_avg.toFixed(1) : '0.0';
+      $('dbSessions').textContent = data.analytics.total_sessions || 0;
+      $('dbTotalFrames').textContent = (data.analytics.total_frames || 0).toLocaleString() + ' frames logged';
+    }
+
+    if (data.hourly && data.hourly.length > 0) {
+      const labels = data.hourly.map(r => {
+        const d = new Date(r.hour_ts * 1000);
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      });
+      const peaks = data.hourly.map(r => r.peak_persons);
+      const avgs = data.hourly.map(r => r.avg_persons);
+      
+      dbChart.data.labels = labels;
+      dbChart.data.datasets[0].data = peaks;
+      dbChart.data.datasets[1].data = avgs;
+      dbChart.update();
+    } else {
+      // In case we have no data yet
+      dbChart.data.labels = ['No Data Yet'];
+      dbChart.data.datasets[0].data = [0];
+      dbChart.data.datasets[1].data = [0];
+      dbChart.update();
+    }
+  } catch (e) {
+    console.warn("Failed to fetch DB analytics", e);
+  }
+}
+
+fetchDbAnalytics();
+setInterval(fetchDbAnalytics, 5000); // refresh every 5s to show live DB changes
+
+function downloadDbChart() {
+  const canvas = $('dbChart');
+  if(!canvas) return;
+  const link = document.createElement('a');
+  link.download = 'classroom_historical_graph.png';
+  // Chart.js uses white background if left transparent, let's just grab the data url
+  // Note: we can fill a white/dark background but standard PNG supports transparency.
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+</script>
+</body>
+</html>
