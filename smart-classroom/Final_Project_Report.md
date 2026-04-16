@@ -31,7 +31,7 @@ The architecture is split into a highly efficient Python-based data processing b
 ### Real-Time Quadrant Analysis
 Every frame processed by the camera is mathematically divided into four specific quadrants (Q1: Top-Left, Q2: Top-Right, Q3: Bottom-Left, Q4: Bottom-Right). The system tracks specifically where students are clustering within the classroom, rendering a live total combined with regional breakdowns.
 
-![Smart Classroom Live Dashboard](/Users/sheikharsalan/.gemini/antigravity/brain/6c5aa36e-460a-4c62-b434-d4dc7450cb93/smart_classroom_dashboard_1776257131085.png)
+![Smart Classroom Live Dashboard](\assets\placeholder.png)
 
 > [!TIP]
 > The dashboard operates at near-zero latency because we split the video imagery away from the statistical text data. The statistics are sent instantly via Socket.io over a persistent web socket, keeping network traffic exceptionally low.
@@ -47,9 +47,9 @@ To prevent power waste, we introduced an **Automated Appliances** matrix. A back
 * **11 – 19 Students**: 4 Fans, 6 Lights *(Medium-Power Mode)*
 * **20+ Students**: 6 Fans, 8 Lights *(Maximum Cooling/Lighting Mode)*
 
-![Automated Appliance Dashboard](/Users/sheikharsalan/.gemini/antigravity/brain/6c5aa36e-460a-4c62-b434-d4dc7450cb93/automated_appliances_panel_1776259492263.png)
+<!-- ![Automated Appliance Dashboard](/Users/sheikharsalan/.gemini/antigravity/brain/6c5aa36e-460a-4c62-b434-d4dc7450cb93/automated_appliances_panel_1776259492263.png)
 
-Whenever the server algorithm shifts, the UI actively glows and updates in real time. For standalone image analysis, the dashboard fires a dedicated system toast informing the user of the exact power-routing choices it made based on the snapshot.
+Whenever the server algorithm shifts, the UI actively glows and updates in real time. For standalone image analysis, the dashboard fires a dedicated system toast informing the user of the exact power-routing choices it made based on the snapshot. -->
 
 ---
 
@@ -59,7 +59,7 @@ Every time a user initiates a feed (webcam, file, or image), a distinct **Sessio
 
 Rather than overloading the local disk by saving data 30 times a second, our DB layer implements a **Thread-Safe Memory Buffer**. It quietly holds statistical data (FPS, individual quadrant counts, timestamp) in RAM and bulk-flushes it dynamically, guaranteeing the live video feed never drops frames while logging data.
 
-![Historical Database Statistics](/Users/sheikharsalan/.gemini/antigravity/brain/6c5aa36e-460a-4c62-b434-d4dc7450cb93/historical_database_data_section_1776257847615.png)
+![Historical Database Statistics](\assets\analysis.png)
 
 > [!IMPORTANT]
 > To comply with strict reporting and analytics standards, the dashboard features one-click robust data delivery mechanisms.

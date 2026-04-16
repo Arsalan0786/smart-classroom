@@ -1,6 +1,6 @@
 # Smart Classroom AI Dashboard 🎓
 
-![Smart Classroom AI](https://github.com/Arsalan0786/smart-classroom/assets/placeholder.png) <!-- Update this with an actual screenshot from your repo -->
+![Smart Classroom AI](/smart-classroom/assets/placeholder.png) <!-- Update this with an actual screenshot from your repo -->
 
 A comprehensive, real-time Computer Vision system and full-stack web dashboard designed for modern educational environments. It uses machine learning to actively monitor classroom occupancy, automatically manages energy-consuming appliances (fans & lights) to reduce power waste, and stores historical analytics data for institution-wide auditing.
 
@@ -60,7 +60,7 @@ If you are on macOS or Linux, use the provided helper script:
 chmod +x run.sh
 ./run.sh
 ```
-*Alternatively, you can manually run `python3 app.py`.*
+*Alternatively, you can manually run `python app.py or python3 app.py`.*
 
 **4. Open the Interface:**
 Once you see the `* Running on http://127.0.0.1:5050` message, open your web browser and navigate to:
