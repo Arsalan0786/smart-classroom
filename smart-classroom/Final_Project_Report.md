@@ -31,7 +31,7 @@ The architecture is split into a highly efficient Python-based data processing b
 ### Real-Time Quadrant Analysis
 Every frame processed by the camera is mathematically divided into four specific quadrants (Q1: Top-Left, Q2: Top-Right, Q3: Bottom-Left, Q4: Bottom-Right). The system tracks specifically where students are clustering within the classroom, rendering a live total combined with regional breakdowns.
 
-![Smart Classroom Live Dashboard](\assets\placeholder.png)
+![Smart Classroom Live Dashboard](https://github.com/Mohd-Shujath-Ali/smart-classroom/blob/main/smart-classroom/assets/placeholder.png)
 
 > [!TIP]
 > The dashboard operates at near-zero latency because we split the video imagery away from the statistical text data. The statistics are sent instantly via Socket.io over a persistent web socket, keeping network traffic exceptionally low.
@@ -59,7 +59,7 @@ Every time a user initiates a feed (webcam, file, or image), a distinct **Sessio
 
 Rather than overloading the local disk by saving data 30 times a second, our DB layer implements a **Thread-Safe Memory Buffer**. It quietly holds statistical data (FPS, individual quadrant counts, timestamp) in RAM and bulk-flushes it dynamically, guaranteeing the live video feed never drops frames while logging data.
 
-![Historical Database Statistics](\assets\analysis.png)
+![Historical Database Statistics](https://github.com/Mohd-Shujath-Ali/smart-classroom/blob/main/smart-classroom/assets/analysis.png?raw=true)
 
 > [!IMPORTANT]
 > To comply with strict reporting and analytics standards, the dashboard features one-click robust data delivery mechanisms.
